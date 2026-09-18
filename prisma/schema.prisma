@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Firm {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  clients   Client[]
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  /// "STAFF" | "REVIEWER"
+  role         String     @default("STAFF")
+  firm         Firm       @relation(fields: [firmId], references: [id])
+  firmId       String
+  createdAt    DateTime   @default(now())
+  auditLogs    AuditLog[]
+  documents    Document[] @relation("UploadedBy")
+}
+
+model Client {
+  id        String     @id @default(cuid())
+  name      String
+  firm      Firm       @relation(fields: [firmId], references: [id])
+  firmId    String
+  createdAt DateTime   @default(now())
+  documents Document[]
+}
+
+model Document {
+  id           String     @id @default(cuid())
+  name         String
+  fileName     String?
+  /// "PENDING" | "UPLOADED" | "UNDER_REVIEW" | "CORRECTION_REQUIRED" | "APPROVED"
+  status       String     @default("PENDING")
+  client       Client     @relation(fields: [clientId], references: [id])
+  clientId     String
+  uploadedBy   User       @relation("UploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  comment    String?
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  createdAt  DateTime @default(now())
+}
