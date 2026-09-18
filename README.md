@@ -1,136 +1,223 @@
-# Obliq — Mini Audit Document Review System
+# Obliq — Audit Document Review System
 
-A CA firm audit workflow tool for managing clients, audit documents, and review cycles — with a complete, immutable audit history.
+<div align="center">
+
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?style=for-the-badge&logo=prisma)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=for-the-badge&logo=tailwind-css)
+
+**A CA firm audit workflow tool — manage clients, track document review cycles, and maintain an immutable audit history.**
+
+</div>
+
+---
+
+## Overview
+
+Obliq is a **Mini Audit Document Review System** built for CA firms. It allows staff to upload client documents and reviewers to approve them or request corrections — with every action logged in a tamper-proof audit trail.
+
+```
+Create Client → Add Documents → Upload Files → Review → Approve / Request Correction → Audit History
+```
+
+---
+
+## Features
+
+| Feature | Details |
+|---|---|
+| 🏢 **Multi-tenant** | Firm A cannot see Firm B's data — enforced at the API level |
+| 👥 **Role-based access** | `Staff` uploads, `Reviewer` approves/rejects |
+| 📋 **Immutable audit log** | Every action recorded — who, what, when, which document |
+| 🔐 **Secure auth** | JWT in httpOnly cookies, server-side role + tenant checks |
+| 📄 **Document lifecycle** | `Pending → Uploaded → Under Review → Approved` |
+| 🔄 **Correction flow** | Reviewer requests correction with reason → Staff re-uploads |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend + Backend** | Next.js 14 (App Router) + TypeScript |
+| **Styling** | Tailwind CSS |
+| **Database** | SQLite via Prisma ORM |
+| **Auth** | JWT (`jose`) + `bcryptjs` |
+
+---
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm
+
+- Node.js 18+
 
 ### Setup
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
 
-# Generate Prisma client, create database, and seed demo data
-npm run setup
+# 2. Create database schema + seed demo data
+npm run db:push
+npx ts-node --project tsconfig.seed.json prisma/seed.ts
 ```
 
-### Run the development server
+### Run
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## Demo Accounts
 
-| Firm | Name | Email | Password | Role |
-|---|---|---|---|---|
-| ABC & Co. | Rohit Sharma | rohit@abc.co | password123 | Staff |
-| ABC & Co. | Aman Verma | aman@abc.co | password123 | Reviewer |
-| XYZ & Co. | Priya Mehta | priya@xyz.co | password123 | Staff |
-| XYZ & Co. | Kiran Patel | kiran@xyz.co | password123 | Reviewer |
+Two isolated firms are pre-seeded for testing.
+
+### Firm A — ABC & Co.
+
+| Name | Email | Password | Role |
+|---|---|---|---|
+| Rohit Sharma | `rohit@abc.co` | `password123` | Staff |
+| Aman Verma | `aman@abc.co` | `password123` | Reviewer |
+
+### Firm B — XYZ & Co.
+
+| Name | Email | Password | Role |
+|---|---|---|---|
+| Priya Mehta | `priya@xyz.co` | `password123` | Staff |
+| Kiran Patel | `kiran@xyz.co` | `password123` | Reviewer |
+
+> Logging in as `kiran@xyz.co` and trying to access Firm A's client URLs returns `404` — not just a hidden button.
 
 ---
 
-## Workflow
+## Project Structure
 
 ```
-Reviewer creates client
-   ↓
-Anyone adds required documents (Bank Statement, GST Return, etc.)
-   ↓
-Staff uploads file → status: Uploaded
-   ↓
-Reviewer starts review → status: Under Review
-   ↓
-Reviewer approves → status: Approved ✅
-  OR
-Reviewer requests correction (with reason) → status: Correction Required
-   ↓
-Staff uploads revised document → status: Uploaded (loop)
-```
-
----
-
-## Architecture
-
-### Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend + Backend | Next.js 14 (App Router) |
-| Styling | Tailwind CSS |
-| Database | SQLite via Prisma ORM |
-| Auth | JWT (jose) + bcryptjs |
-
-### Project Structure
-
-```
-app/
-├── (app)/                    # Authenticated routes (server-side auth guard)
-│   ├── clients/              # Client list & create
-│   ├── clients/[id]/         # Client detail + document list
-│   │   ├── documents/[docId] # Document detail + actions + history
-│   │   └── history/          # Full audit history (Reviewer only)
-│   └── layout.tsx            # Auth guard: redirects to /login if no session
-├── login/                    # Public login page
-└── api/                      # REST API routes
-    ├── auth/login             # POST: issues JWT cookie
-    ├── auth/logout            # POST: clears JWT cookie
-    ├── clients                # GET (firm-scoped) / POST (Reviewer only)
-    ├── clients/[id]           # GET (firm-scoped)
-    ├── documents              # POST: add document
-    ├── documents/[id]         # GET / PATCH (upload)
-    ├── documents/[id]/review  # POST: start_review / approve / request_correction
-    └── audit/[clientId]       # GET: full audit log (Reviewer only)
-
-components/
-├── Navbar.tsx          # Top nav with firm, role, logout
-├── StatusBadge.tsx     # Color-coded status pill
-├── AuditTimeline.tsx   # Grouped-by-date audit log renderer
-├── DocumentActions.tsx # Role-based action panel (upload / review / approve)
-└── AddDocumentForm.tsx # Add document with suggested names
-
-lib/
-├── auth.ts    # JWT sign/verify, requireAuth/requireReviewer API guards
-├── prisma.ts  # Prisma client singleton
-└── audit.ts   # createAuditLog helper (single entry point)
+├── app/
+│   ├── (app)/                        # Authenticated routes
+│   │   ├── clients/                  # Client list & create
+│   │   ├── clients/[id]/             # Client detail + documents
+│   │   │   ├── documents/[docId]/    # Document view + actions + history
+│   │   │   └── history/             # Full audit history (Reviewer only)
+│   │   └── layout.tsx               # Server-side auth guard
+│   ├── login/                        # Public login page
+│   └── api/                          # REST API routes
+│       ├── auth/login                # POST — issues JWT cookie
+│       ├── auth/logout               # POST — clears JWT cookie
+│       ├── clients                   # GET (firm-scoped) / POST (Reviewer)
+│       ├── clients/[id]              # GET (firm-scoped)
+│       ├── documents                 # POST — add document
+│       ├── documents/[id]            # GET / PATCH — view + upload
+│       ├── documents/[id]/review     # POST — approve / request correction
+│       └── audit/[clientId]          # GET — full audit log (Reviewer)
+│
+├── components/
+│   ├── Navbar.tsx                    # Top nav with firm, role badge, logout
+│   ├── StatusBadge.tsx               # Color-coded document status pill
+│   ├── AuditTimeline.tsx             # Grouped-by-date audit log renderer
+│   ├── DocumentActions.tsx           # Role-aware action panel
+│   └── AddDocumentForm.tsx           # Add document with quick suggestions
+│
+├── lib/
+│   ├── auth.ts                       # JWT sign/verify + requireAuth/requireReviewer guards
+│   ├── prisma.ts                     # Prisma client singleton
+│   ├── audit.ts                      # createAuditLog() — single write point
+│   └── types.ts                      # Shared TypeScript types
+│
+└── prisma/
+    ├── schema.prisma                 # DB schema
+    └── seed.ts                       # Demo data
 ```
 
 ---
 
-## Security / Tenant Isolation
+## Security Design
 
-> **Authentication ≠ Authorization** and **Frontend hiding a button ≠ Security**
+> **Authentication ≠ Authorization. Hiding a UI button ≠ Security.**
 
-### How firm isolation is enforced
+### Tenant Isolation
 
-1. **JWT carries `firmId`** — set at login from the database, never trusting client-provided values.
+Every API route extracts `firmId` from the **verified JWT** — never from the request body. All database queries include `WHERE firmId = session.firmId`:
 
-2. **Every API route filters by `firmId` from the JWT**, not from the request body:
-   ```ts
-   // ✅ Correct — firmId from verified JWT
-   await prisma.client.findFirst({
-     where: { id: params.id, firmId: session.firmId }
-   });
-   ```
-   A user from Firm B cannot access Firm A data even by guessing a client ID — they get a `404`.
+```ts
+// ✅ firmId comes from the JWT — never from client input
+const client = await prisma.client.findFirst({
+  where: { id: params.id, firmId: session.firmId },
+});
+// Returns 404 if the resource belongs to a different firm
+```
 
-3. **Role checks happen server-side**: Reviewer-only endpoints use `requireReviewer()` which validates the JWT role. Hiding the UI button is supplementary UX, not security.
+A user from Firm B who guesses a Firm A client ID gets a `404`, not unauthorized data.
 
-4. **Audit logs are write-only via server code**: The `createAuditLog()` helper is called only from within API routes. There is no API endpoint that allows editing or deleting audit logs.
+### Role Enforcement
 
-### API response for cross-tenant access attempt
+```ts
+// Reviewer-only endpoints use this guard — checked server-side
+export async function requireReviewer(req) {
+  const result = await requireAuth(req);
+  if (result.session.role !== "REVIEWER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+}
+```
+
+### Immutable Audit Log
+
+Audit entries are written **only** via `createAuditLog()` inside API route handlers. There is no endpoint that edits or deletes audit records.
+
+---
+
+## Document Lifecycle
 
 ```
-GET /api/clients/[firm-A-client-id]  (logged in as Firm B user)
-→ 404 Not Found
+          Staff uploads file
+               │
+        ┌──────▼──────┐
+        │   PENDING   │
+        └──────┬──────┘
+               │  Staff submits file
+        ┌──────▼──────┐
+        │  UPLOADED   │
+        └──────┬──────┘
+               │  Reviewer starts review
+        ┌──────▼──────┐
+        │ UNDER REVIEW│
+        └──────┬──────┘
+         ┌─────┴──────┐
+         │            │
+  Reviewer         Reviewer requests
+  approves         correction
+         │            │
+  ┌──────▼──────┐  ┌──────────────────────┐
+  │  APPROVED ✅ │  │ CORRECTION REQUIRED ⚠️│
+  └─────────────┘  └──────────┬───────────┘
+                               │  Staff re-uploads
+                        ┌──────▼──────┐
+                        │  UPLOADED   │  ← loop continues
+                        └─────────────┘
+```
+
+---
+
+## Audit History Example
+
+```
+15 Jan 2024
+
+  ➕  10:20 AM   Aman Verma added document "Bank Statement"
+  📄  10:30 AM   Rohit Sharma uploaded Bank_Statement_Q1.pdf
+  🔍  10:41 AM   Aman Verma started reviewing
+  ⚠️  10:44 AM   Aman Verma requested correction
+                   Reason: Page 3 was missing. Please upload the complete bank statement.
+  🔄  12:05 PM   Rohit Sharma uploaded revised document: Bank_Statement_Q1_v2.pdf
+  ✅  12:12 PM   Aman Verma approved document
 ```
 
 ---
@@ -139,48 +226,14 @@ GET /api/clients/[firm-A-client-id]  (logged in as Firm B user)
 
 ### Staff
 - View all clients in their firm
-- Add required documents to any client
-- Upload files for documents in `Pending` or `Correction Required` state
-- View document history
+- Add required documents
+- Upload files for `Pending` and `Correction Required` documents
+- View document status and history
 
 ### Reviewer
 - All Staff permissions
 - Create new clients
 - Start document review
 - Approve documents
-- Request corrections (with mandatory reason)
+- Request corrections (mandatory reason required)
 - View full client audit history
-
----
-
-## Audit Events
-
-Every important action generates an immutable audit log:
-
-| Action | Actor | Example Event |
-|---|---|---|
-| Document added | Anyone | `Added document "Bank Statement"` |
-| File uploaded | Staff/Reviewer | `Uploaded Bank_Statement_Q1.pdf` |
-| Review started | Reviewer | `Started reviewing` |
-| Correction requested | Reviewer | `Requested correction` + reason |
-| Revised file uploaded | Staff | `Uploaded revised document: Bank_Statement_v2.pdf` |
-| Approved | Reviewer | `Approved document` |
-
-Each log records: **who** (user name), **what** (action), **when** (timestamp), **which document**, and **any comment/reason**.
-
----
-
-## What Would You Improve If You Had One More Week?
-
-The single most valuable next improvement would be **real file storage with PDF preview**.
-
-Currently, documents are tracked by filename strings (which is fine for an evaluation, and clearly simulates the concept correctly). But in real CA firm use, the actual content of a document is what matters — a reviewer needs to *read* the document to make an informed decision.
-
-The improvement would involve:
-1. **File upload to local disk or S3-compatible storage** (e.g. MinIO for self-hosted), storing the file path/key in the `Document` table.
-2. **A secure file download/preview endpoint** that re-validates the JWT and `firmId` before serving the file — so a Firm B URL cannot be used to fetch Firm A files even if someone guesses the file path.
-3. **PDF inline preview** on the document detail page using an `<iframe>` or a library like `react-pdf`, so reviewers can read the document without downloading it.
-
-This is the next most valuable improvement because everything else in the system works correctly — the workflow, status transitions, roles, tenant isolation, and audit trail are all functional. The only missing piece for real-world use is being able to *read* what you're reviewing. A reviewer who cannot see the document content cannot meaningfully approve or request corrections, which makes the system incomplete for actual CA firm work.
-
-I deliberately did not add this in the initial build because the challenge said "do not build unrelated features" and simulating file upload is sufficient to demonstrate all the required concepts (status transitions, audit logging, role enforcement). Adding real file storage would also require infrastructure decisions (local vs cloud) that go beyond the scope of a frontend evaluation.
